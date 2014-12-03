@@ -17,7 +17,7 @@ module PolymorphicIntegerType
             mapping[t]
           end
 
-          define_method "#{foreign_type}=" do |klass|            
+          define_method "#{foreign_type}=" do |klass|
             enum = mapping.key(klass.to_s)
             enum ||= mapping.key(klass.base_class.to_s) if klass.kind_of?(Class) && klass <= ActiveRecord::Base
             enum ||= klass if klass != NilClass
@@ -49,17 +49,19 @@ module PolymorphicIntegerType
           options[:foreign_key] ||= "#{poly_type}_id"
           foreign_type = options.delete(:foreign_type) || "#{poly_type}_type"
 
-          options[:scope] ||= proc do |*args|
-            result = self.where(foreign_type => klass_mapping.to_i)
-            result = result.instance_exec(*args, &scope) if scope.is_a?(Proc)
-            result
-          end
+          options[:scope] ||= -> {
+            condition = where(foreign_type => klass_mapping.to_i)
+            condition = instance_exec(&scope).merge(condition) if scope.is_a?(Proc)
+            condition
+          }
+        else
+          options[:scope] ||= scope
         end
       end
 
       def has_many(name, scope = nil, options = {}, &extension)
         if scope.kind_of? Hash
-          options = scope 
+          options = scope
           scope = nil
         end
 
@@ -69,7 +71,7 @@ module PolymorphicIntegerType
 
       def has_one(name, scope = nil, options = {})
         if scope.kind_of? Hash
-          options = scope 
+          options = scope
           scope = nil
         end
 
